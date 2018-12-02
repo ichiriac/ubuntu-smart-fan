@@ -11,8 +11,17 @@ In order to avoid these kind of problems this script reads the CPU temperature a
 ## How to install
 
 ```sh
-npm install -g ubuntu-smart-fan
+sudo npm install -g ubuntu-smart-fan
 ```
+
+This program works with `lm-sensors`, so if you don't have it yet, you may install it :
+
+```sh
+sudo apt-get install lm-sensors
+sudo sensors-detect
+```
+
+> Note that it will work only with `lm-sensors` and will fail on Virtual Machines guests. You have to run the `ubuntu-smart-fan` command with sudo
 
 ![The console preview](https://github.com/ichiriac/ubuntu-smart-fan/blob/master/assets/preview.png "The console preview")
 
@@ -26,10 +35,10 @@ If it's raising rapidly try to increase the `efficiency` parameter :
 sudo ubuntu-smart-fan --efficiency=0.5
 ```
 
-If it stays too hot decrease the `max` parameter :
+If it stays too hot decrease the `max` or `min` parameter :
 ```sh
 # sets the efficiency 
-sudo ubuntu-smart-fan --efficiency=1 --max=80
+sudo ubuntu-smart-fan --efficiency=1 --max=70 --min=30
 ```
 
 If your CPU is usually hot (lets says around 60° to 70°) and the fan does not lowers its temperature, you can also increase the thresold :
@@ -38,13 +47,27 @@ If your CPU is usually hot (lets says around 60° to 70°) and the fan does not 
 sudo ubuntu-smart-fan --threshold=0.3
 ```
 
-If the fan is noisy even when the CPU is at a low temperature, you can decrease it's basic speed (some fans make more noise) - ut check the temperature evolution
+If the fan is noisy even when the CPU is at a low temperature, you can decrease it's basic speed (some fans make more noise) - and check the temperature evolution
 ```sh
 # sets the default fan speed (from 0 to 255)
-sudo ubuntu-smart-fan --fan=60
+sudo ubuntu-smart-fan --fan=60 --min=20
 ```
 
-Note : Anyway, this parameter is not too eficient because if the fan speed is not enough in order to cool the CPU it will automatically raise. You can also decrease the efficiency `efficiency` parameter but it may not protect enough our CPU.
+> Note : Anyway, this parameter is not too eficient because if the fan speed is not enough in order to cool the CPU it will automatically raise. You can also decrease the efficiency `efficiency` parameter but it may not protect enough our CPU. Every computer depending its behavior and capabilitie can vary in parameters, you need to find out your own parameters in order to stabilize the temperature and reduce the noise.
+
+---
+
+For example, my computer by using the auto mode had around 80° and raised to 90° and so ... The fan starts to make a bit of noise at around 120, and is noticeable at around 140.
+
+Here my configuration : `sudo ubuntu-smart-fan --max=86 --min=45 --fan=100`
+
+When the CPU goes higher than 62° the fan works at 140, but with the default configuration it will increase or decrease gradually. 
+
+I personnaly don't want to hear the fan too high, but if you want to make it react when the CPU raises try `sudo ubuntu-smart-fan --max=90 --min=50 --fan=100 --efficiency=2`
+
+The high temperature becomes at 68° and low at 60°. When the temperature goes high, the fan will go rapidly to max, and then it will decrease gradually if the temperature goes down. It will become silent bellow low temperature.
+
+Happy testing :smile:
 
 ## Help
 

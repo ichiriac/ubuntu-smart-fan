@@ -28,7 +28,7 @@ console.log("Looking for sensors");
 fs.readdir(hwmon, function(err, files) {
   if (err) {
     console.error("Unable to scan hardware monitors folder");
-    console.error("This tool supports only ubuntu");
+    console.error("This tool supports only ubuntu with lm-sensors");
     return process.exit(1);
   }
   let temp = null;
