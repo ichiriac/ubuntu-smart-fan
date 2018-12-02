@@ -14,6 +14,8 @@ In order to avoid these kind of problems this script reads the CPU temperature a
 npm install -g ubuntu-smart-fan
 ```
 
+![The console preview](https://github.com/ichiriac/ubuntu-smart-fan/blob/master/assets/preview.png "The console preview")
+
 ## How to configure
 
 You can try it from the cli and test with default parameters in order to see how your CPU reacts. After working a bit with it, if the CPU becomes too hot :
@@ -82,6 +84,10 @@ Stop    - "sudo service ubuntu-smart-fan stop"
 Status  - "sudo service ubuntu-smart-fan status"
 Restart - "sudo service ubuntu-smart-fan restart"
 ```
+
+In order to check if the temperature does not raises too high, you can have a look at logs here `/var/log/ubuntu-smart-fan.log`
+
+You can also edit paramters about `ubuntu-smart-fan` by editing the `line 86`, locate the following command : `	start /usr/local/bin/ubuntu-smart-fan  --silent 2>&1 >/dev/null`
 
 ## Licence
 
