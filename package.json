@@ -1,0 +1,33 @@
+{
+  "name": "ubuntu-smart-fan",
+  "version": "1.0.1",
+  "description": "Automated Smart FAN for Ubuntu",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "ubuntu-smart-fan": "./index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ichiriac/ubuntu-smart-fan.git"
+  },
+  "keywords": [
+    "ubuntu",
+    "sensors",
+    "fan",
+    "cpu"
+  ],
+  "author": "Ioan CHIRIAC",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ichiriac/ubuntu-smart-fan/issues"
+  },
+  "homepage": "https://github.com/ichiriac/ubuntu-smart-fan#readme",
+  "dependencies": {
+    "blessed": "^0.1.81",
+    "blessed-contrib": "^4.8.8",
+    "commander": "^2.19.0"
+  }
+}
