@@ -25,6 +25,20 @@ sudo sensors-detect
 
 ![The console preview](https://github.com/ichiriac/ubuntu-smart-fan/blob/master/assets/preview.png "The console preview")
 
+## Running issues
+
+> Unable to scan hardware monitors folder. This tool supports only ubuntu with lm-sensors
+
+This means you don't have a `/sys/class/hwmon` folder. Usually it's because you have not installed `lm-sensors`. You have to run `sudo apt-get install lm-sensors` in order to install it
+
+> Unable to load the manual fan mode. Try to run with sudo
+
+The manual mode in order to control the fan speed is a flag into a file, you need root access in order to be able to update that file. Re-run the command with the root account.
+
+> Unable to find any fan device. Try to run sensors-detect
+
+This script scans the sensors folder and looks for a fan device. Before being able to identify the fan you need to run `sudo sensors-detect` in order to detect any fan device. If you still have this message, run the soft with the debug flag `ubuntu-smart-fan --debug` and check if into the output you have any fan or pwm value. If it's the case, please open an issue on github and paste there the debug output
+
 ## How to configure
 
 You can try it from the cli and test with default parameters in order to see how your CPU reacts. After working a bit with it, if the CPU becomes too hot :
