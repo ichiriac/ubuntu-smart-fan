@@ -15,6 +15,7 @@ program
   .option('-e, --efficiency [i]', 'Sets an efficiency coef (-1 to 1 : if fan is too noisy decrese)', parseFloat)
   .option('-h, --hwmon [s]', 'Sets the hwmon path')
   .option('-s, --silent', 'Enables the silent mode')
+  .option('-d, --debug', 'Outputs debug informations')
   .parse(process.argv);
 
 const hwmon = program.hwmon ? program.hwmon : "/sys/class/hwmon";
@@ -37,7 +38,18 @@ fs.readdir(hwmon, function(err, files) {
   files.forEach(function(file) {
     const stat = fs.statSync(hwmon + "/" + file);
     if (stat.isDirectory()) {
-      if (!fan && fs.existsSync(hwmon + "/" + file + "/fan1_label")) {
+      if (program.debug) {
+        var contents = fs.readdirSync(hwmon + "/" + file);
+        console.log('## ' + file + ' :');
+        contents.forEach(function(item) {
+          const path = hwmon + "/" + file + "/" + item;
+          const stat = fs.statSync(path);
+          if (!stat.isDirectory()) {
+            const value = fs.readFileSync(path).toString().trim();
+            console.log('  - ' + item + ' = ' + value);
+          }
+        });
+      } else if (!fan && fs.existsSync(hwmon + "/" + file + "/fan1_label")) {
         fan = hwmon + "/" + file + "/pwm1";
         temp = hwmon + "/" + file + "/temp1_input";
         name = fs.readFileSync(hwmon + "/" + file + "/name").toString().trim();
@@ -57,6 +69,10 @@ fs.readdir(hwmon, function(err, files) {
     console.error("Unable to find any fan device");
     console.error("Try to run sensors-detect");
     return process.exit(3);
+  }
+
+  if (program.debug) {
+    return process.exit(0);
   }
 
   // init the screen
