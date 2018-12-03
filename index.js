@@ -40,7 +40,7 @@ fs.readdir(hwmon, function(err, files) {
     if (stat.isDirectory()) {
       if (program.debug) {
         var contents = fs.readdirSync(hwmon + "/" + file);
-        console.log('## ' + file + ' :');
+        console.log('\n## ' + file + ' :');
         contents.forEach(function(item) {
           const path = hwmon + "/" + file + "/" + item;
           const stat = fs.statSync(path);
@@ -49,18 +49,21 @@ fs.readdir(hwmon, function(err, files) {
             console.log('  - ' + item + ' = ' + value);
           }
         });
-      } else if (!fan && fs.existsSync(hwmon + "/" + file + "/fan1_label")) {
+      }
+      if (!fan && fs.existsSync(hwmon + "/" + file + "/fan1_label")) {
         fan = hwmon + "/" + file + "/pwm1";
         temp = hwmon + "/" + file + "/temp1_input";
         name = fs.readFileSync(hwmon + "/" + file + "/name").toString().trim();
         name += ' -> ' + fs.readFileSync(hwmon + "/" + file + "/fan1_label").toString().trim();
-        console.log("Found fan " + name);
-        try {
-          fs.writeFileSync(hwmon + "/" + file + "/pwm1_enable", "1");
-        } catch(e) {
-          console.error("Unable to load the manual fan mode");
-          console.error("Try to run with sudo");
-          return process.exit(2);
+        if (!program.debug) {
+          console.log("Found fan " + name);
+          try {
+            fs.writeFileSync(hwmon + "/" + file + "/pwm1_enable", "1");
+          } catch(e) {
+            console.error("Unable to load the manual fan mode");
+            console.error("Try to run with sudo");
+            return process.exit(2);
+          }
         }
       }
     }
@@ -72,6 +75,10 @@ fs.readdir(hwmon, function(err, files) {
   }
 
   if (program.debug) {
+    console.log('\n---\n');
+    console.log('Selected fan : ' + name);
+    console.log('Fan file : ' + fan);
+    console.log('Temperature file : ' + temp);
     return process.exit(0);
   }
 
