@@ -16,6 +16,7 @@ program
   .option('-h, --hwmon [s]', 'Sets the hwmon path')
   .option('-s, --silent', 'Enables the silent mode')
   .option('-d, --debug', 'Outputs debug informations')
+  .option('-r, --dry', 'Read/Only dry mode')
   .parse(process.argv);
 
 const hwmon = program.hwmon ? program.hwmon : "/sys/class/hwmon";
@@ -58,6 +59,7 @@ fs.readdir(hwmon, function(err, files) {
         if (!program.debug) {
           console.log("Found fan " + name);
           try {
+            if (process)
             fs.writeFileSync(hwmon + "/" + file + "/pwm1_enable", "1");
           } catch(e) {
             console.error("Unable to load the manual fan mode");
