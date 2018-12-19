@@ -33,9 +33,13 @@ fs.readdir(hwmon, function(err, files) {
     console.error("This tool supports only ubuntu with lm-sensors");
     return process.exit(1);
   }
+  const fans = [];
+
   let temp = null;
   let fan = null;
   let name = null;
+  let label = null;
+
   files.forEach(function(file) {
     const stat = fs.statSync(hwmon + "/" + file);
     if (stat.isDirectory()) {
@@ -51,27 +55,49 @@ fs.readdir(hwmon, function(err, files) {
           }
         });
       }
-      if (!fan && fs.existsSync(hwmon + "/" + file + "/fan1_label")) {
-        fan = hwmon + "/" + file + "/pwm1";
-        temp = hwmon + "/" + file + "/temp1_input";
+      // resolve the controller name
+      try {
         name = fs.readFileSync(hwmon + "/" + file + "/name").toString().trim();
-        name += ' -> ' + fs.readFileSync(hwmon + "/" + file + "/fan1_label").toString().trim();
-        if (!program.debug) {
-          console.log("Found fan " + name);
+      } catch(e) {
+        name = file;
+      }
+      // scan for 5 first fans
+      for(var f = 1; f < 6; f++) {
+        fan = hwmon + "/" + file + "/pwm" + f;
+        if (fs.existsSync(fan)) {
+          temp = hwmon + "/" + file + "/temp"+f+"_input";
           try {
-            if (!program.dry) {
-              fs.writeFileSync(hwmon + "/" + file + "/pwm1_enable", "1");
-            }
+            label = fs.readFileSync(hwmon + "/" + file + "/fan1_label").toString().trim();
           } catch(e) {
-            console.error("Unable to load the manual fan mode");
-            console.error("Try to run with sudo");
-            return process.exit(2);
+            label = 'fan' + f;
+          }
+          if (fs.existsSync(temp)) {
+            fans.push({
+              input: temp,
+              name: name,
+              label: label,
+              controller: fan,
+              value: 0
+            });
+            if (!program.debug) {
+              console.log("Found fan " + name + " -> " + label);
+              try {
+                if (!program.dry) {
+                  fs.writeFileSync(hwmon + "/" + file + "/pwm1_enable", "1");
+                }
+              } catch(e) {
+                console.error("Unable to load the manual fan mode");
+                console.error("Try to run with sudo");
+                return process.exit(2);
+              }
+            }
           }
         }
       }
+      
     }
   });
-  if (!fan) {
+  if (fans.length === 0) {
     console.error("Unable to find any fan device");
     console.error("Try to run sensors-detect");
     return process.exit(3);
@@ -79,9 +105,12 @@ fs.readdir(hwmon, function(err, files) {
 
   if (program.debug) {
     console.log('\n---\n');
-    console.log('Selected fan : ' + name);
-    console.log('Fan file : ' + fan);
-    console.log('Temperature file : ' + temp);
+    fans.forEach(function(item) {
+      console.log('Device : ' + item.name);
+      console.log('Fan : ' + item.label);
+      console.log('Controller : ' + item.controller);
+      console.log('Temperature : ' + item.input);
+    }); 
     return process.exit(0);
   }
 
@@ -95,107 +124,131 @@ fs.readdir(hwmon, function(err, files) {
   var datagrid = program.silent ? null : grid.set(0, 0, 12, 12, contrib.line, {
     showNthLabel: 5,
     maxY: 100,
-    label: name + " (Min : " + min + "° - Low : " + Math.round(min + (min * threshold)) + "° - High : " + Math.round(min + (max * threshold)) + "° - Max : " + max + "°)",
+    label: "Min : " + min + "° - Low : " + Math.round(min + (min * threshold)) + "° - High : " + Math.round(min + (max * threshold)) + "° - Max : " + max + "°",
     showLegend: true,
   });
-  let cpuGraph = {
-    title: 'CPU',
-    style: {
-      line: 'magenta'
-    },
-    x: Array(61).fill().map((_, i) => 60 - i),
-    y: Array(61).fill(0)
-  };
-  let fanGraph = {
-    title: 'FAN',
-    style: {
-      line: 'cyan'
-    },
-    x: Array(61).fill().map((_, i) => 60 - i),
-    y: Array(61).fill(0)
-  };
+
+  let colors = [
+    'magenta',
+    'cyan',
+    'green',
+    'yellow',
+    'blue2',
+    'red',
+    'magenta3',
+    'cyan3',
+    'green3',
+    'yellow3'
+  ];
+
+
+  let lines = [];
+  fans.forEach(function(item, index) {
+    lines.push({
+      title: item.label + ' °',
+      style: {
+        line: colors[(index % 5) * 2]
+      },
+      x: Array(61).fill().map((_, i) => 60 - i),
+      y: Array(61).fill(0)
+    });
+    lines.push({
+      title: item.label,
+      style: {
+        line: colors[((index % 5) * 2) + 1]
+      },
+      x: Array(61).fill().map((_, i) => 60 - i),
+      y: Array(61).fill(0)
+    });
+  });
+
   if (!program.silent) {
-    datagrid.setData([cpuGraph, fanGraph]);
+    datagrid.setData(lines);
     screen.render();
   }
 
 
-  let lastCpu = 0;
   function checkTemp() {
-    const tCpu = Math.round(
-      Number.parseInt(fs.readFileSync(temp).toString(), 10) / 1000
-    );
-    const level = Number.parseInt(
-      fs.readFileSync(fan).toString(), 10
-    );
-    let target = level;
-    if (tCpu > max) {
-      target = 255;
-      if (program.silent) {
-        console.warn(new Date() + "\tMax CPU temperature : " + tCpu + "°");
-      }
-    }
-    if (tCpu < min + (min * threshold)) {
-      if (tCpu < min && target > confort) {
-        target = confort
-      }
-      if (lastCpu >= tCpu) {
-        if (target > 10) {
-          target -= 10;
+    // run for each fan
+    fans.forEach(function(item, index) {
+      const tCpu = Math.round(
+        Number.parseInt(fs.readFileSync(item.input).toString(), 10) / 1000
+      );
+      const level = Number.parseInt(
+        fs.readFileSync(item.controller).toString(), 10
+      );
+      let target = level;
+      if (tCpu > max) {
+        target = 255;
+        if (program.silent) {
+          console.warn(new Date() + "\tMax "+item.label+" temperature : " + tCpu + "°");
         }
       }
-    } else {
-      if (tCpu < min + (max * threshold)) {
-        if (target < confort) {
-          target = confort;
+      let lastCpu = item.value;
+      if (tCpu < min + (min * threshold)) {
+        if (tCpu < min && target > confort) {
+          target = confort
         }
-        if (lastCpu !== tCpu) {
-          if (lastCpu > tCpu) {
-            target -= 5;
-          } else {
-            target += 2;
+        if (lastCpu >= tCpu) {
+          if (target > 10) {
+            target -= 10;
           }
         }
       } else {
-        if (target < confort * (1 + threshold)) {
-          target = confort * (1 + loudness);
-        }
-        if (lastCpu > tCpu) {
-          target -= 2 * (1 + loudness);
+        if (tCpu < min + (max * threshold)) {
+          if (target < confort) {
+            target = confort;
+          }
+          if (lastCpu !== tCpu) {
+            if (lastCpu > tCpu) {
+              target -= 5;
+            } else {
+              target += 2;
+            }
+          }
         } else {
-          target += 2 * (2 + loudness);
-        }
-        if (program.silent && lastCpu < min + (max * threshold)) {
-          console.log(new Date() + "\tHigh CPU temperature : " + tCpu + "° / " + target);
+          if (target < confort * (1 + threshold)) {
+            target = confort * (1 + loudness);
+          }
+          if (lastCpu > tCpu) {
+            target -= 2 * (1 + loudness);
+          } else {
+            target += 2 * (2 + loudness);
+          }
+          if (program.silent && lastCpu < min + (max * threshold)) {
+            console.log(new Date() + "\tHigh "+item.label+" temperature : " + tCpu + "° / " + target);
+          }
         }
       }
-    }
-    lastCpu = tCpu;
-    target = Math.round(target);
-    if (target > 255) target = 255;
-    if (target < 0) target = 0;
+      item.value = tCpu;
+      target = Math.round(target);
+      if (target > 255) target = 255;
+      if (target < 0) target = 0;
 
-    // flush fan change
-    if (target != level && !program.dry) {
-      fs.writeFileSync(fan, target.toString());
-    }
-    
+      // flush fan change
+      if (target != level && !program.dry) {
+        fs.writeFileSync(item.controller, target.toString());
+      } else {
+        target = level;
+      }
+      if (!program.silent) {
+        lines[index * 2].title = item.label + ' : ' + tCpu + '°';
+        lines[index * 2].y.shift();
+        lines[index * 2].y.push(
+          tCpu < min ? 
+            0 : Math.round((tCpu - min) / (max - min) * 100)
+        );
+        lines[(index * 2) + 1].title = item.label + ' : ' + Math.round((target / 255) * 100) + '%';
+        lines[(index * 2) + 1].y.shift();
+        lines[(index * 2) + 1].y.push(
+          target < confort ? 
+            0 : Math.round((target - confort) / (255 - confort) * 100)
+        );
+      }
+    });
+
     if (!program.silent) {
-      cpuGraph.title = 'CPU ' + tCpu + '°';
-      cpuGraph.y.shift();
-      cpuGraph.y.push(
-        tCpu < min ? 
-          0 : Math.round((tCpu - min) / (max - min) * 100)
-      );
-
-      fanGraph.title = 'FAN ' + target;
-      fanGraph.y.shift();
-      fanGraph.y.push(
-        target < confort ? 
-          0 : Math.round((target - confort) / (255 - confort) * 100)
-      );
-
-      datagrid.setData([cpuGraph, fanGraph]);
+      datagrid.setData(lines);
       screen.render();
     }
     setTimeout(checkTemp, 5000); 
@@ -205,12 +258,14 @@ fs.readdir(hwmon, function(err, files) {
   !program.silent && screen.key(['escape', 'q', 'C-c'], function(ch, key) {
     try {
       if (!program.dry) {
-        // reset level to confort by default
-        if (lastCpu < max) {
-          fs.writeFileSync(fan, confort);
-        }
-        // reset automatic mode on fan
-        fs.writeFileSync(fan + "_enable", "2");
+        fans.forEach(function(item, index) {
+          // reset level to confort by default
+          if (item.value < max) {
+            fs.writeFileSync(item.controller, confort);
+          }
+          // reset automatic mode on fan
+          fs.writeFileSync(item.controller + "_enable", "2");
+        });
       }
     } catch(e) {
       console.error("Unable to load the manual fan mode");

@@ -1,6 +1,6 @@
 {
   "name": "ubuntu-smart-fan",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Automated Smart FAN for Ubuntu",
   "main": "index.js",
   "scripts": {
