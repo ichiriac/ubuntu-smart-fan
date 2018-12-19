@@ -59,8 +59,9 @@ fs.readdir(hwmon, function(err, files) {
         if (!program.debug) {
           console.log("Found fan " + name);
           try {
-            if (process)
-            fs.writeFileSync(hwmon + "/" + file + "/pwm1_enable", "1");
+            if (!program.dry) {
+              fs.writeFileSync(hwmon + "/" + file + "/pwm1_enable", "1");
+            }
           } catch(e) {
             console.error("Unable to load the manual fan mode");
             console.error("Try to run with sudo");
@@ -175,7 +176,7 @@ fs.readdir(hwmon, function(err, files) {
     if (target < 0) target = 0;
 
     // flush fan change
-    if (target != level) {
+    if (target != level && !program.dry) {
       fs.writeFileSync(fan, target.toString());
     }
     
@@ -203,12 +204,14 @@ fs.readdir(hwmon, function(err, files) {
   // request the exit
   !program.silent && screen.key(['escape', 'q', 'C-c'], function(ch, key) {
     try {
-      // reset level to confort by default
-      if (lastCpu < max) {
-        fs.writeFileSync(fan, confort);
+      if (!program.dry) {
+        // reset level to confort by default
+        if (lastCpu < max) {
+          fs.writeFileSync(fan, confort);
+        }
+        // reset automatic mode on fan
+        fs.writeFileSync(fan + "_enable", "2");
       }
-      // reset automatic mode on fan
-      fs.writeFileSync(fan + "_enable", "2");
     } catch(e) {
       console.error("Unable to load the manual fan mode");
       console.error("Try to run with sudo");
